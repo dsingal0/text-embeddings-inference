@@ -23,6 +23,7 @@ mod nomic;
 mod pplx1;
 mod qwen2;
 mod qwen3;
+mod t5gemma2;
 
 #[cfg(feature = "cuda")]
 mod flash_bert;
@@ -70,6 +71,7 @@ pub use nomic::{NomicBertModel, NomicConfig};
 pub use pplx1::{Pplx1Config, Pplx1Model};
 pub use qwen2::Qwen2Config;
 pub use qwen3::{Qwen3Config, Qwen3Model};
+pub use t5gemma2::{T5Gemma2EncoderModel, T5Gemma2TopLevelConfig};
 
 #[cfg(feature = "cuda")]
 pub use flash_bert::FlashBertModel;

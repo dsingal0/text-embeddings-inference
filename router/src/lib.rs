@@ -263,6 +263,8 @@ pub async fn run(
     // `gemma3_text` model without specifying a `--dtype`
     let dtype = if dtype.is_none() && config.model_type == "gemma3_text" {
         DType::Float32
+    } else if dtype.is_none() && config.model_type == "t5gemma2" {
+        DType::Bfloat16
     } else {
         dtype.unwrap_or_default()
     };

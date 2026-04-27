@@ -26,7 +26,7 @@ use crate::models::{
     DistilBertConfig, DistilBertModel, GTEConfig, GTEModel, Gemma3Config, Gemma3Model,
     JinaBertModel, JinaCodeBertModel, LlamaConfig, MPNetConfig, MPNetModel, MistralConfig, Model,
     ModernBertConfig, ModernBertModel, NomicBertModel, NomicConfig, Pplx1Config, Pplx1Model,
-    Qwen2Config, Qwen3Config, Qwen3Model,
+    Qwen2Config, Qwen3Config, Qwen3Model, T5Gemma2EncoderModel, T5Gemma2TopLevelConfig,
 };
 #[cfg(feature = "cuda")]
 use crate::models::{
@@ -144,6 +144,8 @@ enum Config {
     #[allow(dead_code)] // NOTE: As it's only used when `cuda` feature is enabled
     Qwen2(Qwen2Config),
     Qwen3(Qwen3Config),
+    #[serde(rename(deserialize = "t5gemma2"))]
+    T5Gemma2(T5Gemma2TopLevelConfig),
     #[serde(rename(deserialize = "bidirectional_pplx_qwen3"))]
     Pplx1(Pplx1Config),
     Roberta(BertConfig),
@@ -266,6 +268,8 @@ impl CandleBackend {
             Ok(DType::F32)
         } else if &dtype == "float16" {
             Ok(DType::F16)
+        } else if &dtype == "bfloat16" {
+            Ok(DType::BF16)
         } else {
             Err(BackendError::Start(format!(
                 "DType {dtype} is not supported"
@@ -363,6 +367,25 @@ impl CandleBackend {
             (Config::Qwen3(config), Device::Cpu | Device::Metal(_)) => {
                 tracing::info!("Starting Qwen3 model on {:?}", device);
                 Ok(Box::new(Qwen3Model::load(vb, &config, model_type).s()?))
+            }
+            (Config::T5Gemma2(config), Device::Cpu | Device::Metal(_)) => {
+                tracing::info!("Starting T5Gemma2 model on {:?}", device);
+                Ok(Box::new(T5Gemma2EncoderModel::load(
+                    vb.pp("encoder.text_model"),
+                    &config.encoder.text_config,
+                    model_type,
+                    config.encoder.eoi_token_index,
+                ).s()?))
+            }
+            #[cfg(feature = "cuda")]
+            (Config::T5Gemma2(config), Device::Cuda(_)) => {
+                tracing::info!("Starting T5Gemma2 model on {:?}", device);
+                Ok(Box::new(T5Gemma2EncoderModel::load(
+                    vb.pp("encoder.text_model"),
+                    &config.encoder.text_config,
+                    model_type,
+                    config.encoder.eoi_token_index,
+                ).s()?))
             }
             (Config::Pplx1(config), Device::Cpu | Device::Metal(_)) => {
                 // TODO(alvarobartt): Enable Flash Attention with BF16 once supported on Metal
