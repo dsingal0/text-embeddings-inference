@@ -1,0 +1,31 @@
+name: build-router-binary
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: false
+          docker-images: false
+
+      - name: build router binary
+        run: docker build -f Dockerfile-router --target export --output type=local,dest=out .
+
+      - name: upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: text-embeddings-router
+          path: out/text-embeddings-router
+          if-no-files-found: error
