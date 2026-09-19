@@ -1,0 +1,37 @@
+# Minimal single-purpose build of the text-embeddings-router binary
+# for sm_90 (H100), mirroring the flags used by Dockerfile-cuda.
+FROM nvidia/cuda:12.9.1-devel-ubuntu24.04 AS builder
+
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV CUDA_COMPUTE_CAP=90
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    libssl-dev \
+    pkg-config \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain none
+
+WORKDIR /usr/src
+
+COPY backends backends
+COPY core core
+COPY router router
+COPY proto proto
+COPY Cargo.toml ./
+COPY Cargo.lock ./
+COPY rust-toolchain.toml ./
+
+# Install the toolchain pinned in rust-toolchain.toml
+RUN rustup show
+
+# Same cuBLAS pruning the upstream CUDA build performs for sm_90
+RUN nvprune --generate-code code=sm_90 /usr/local/cuda/lib64/libcublas_static.a -o /usr/local/cuda/lib64/libcublas_static.a
+
+RUN cargo build --release --bin text-embeddings-router -F candle-cuda -F static-linking -F http --no-default-features
+
+FROM scratch AS export
+COPY --from=builder /usr/src/target/release/text-embeddings-router /text-embeddings-router
